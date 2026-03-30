@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
+import LazyImage from "@/components/LazyImage";
+import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
 import featuredHero from "@/assets/featured-hero.jpg";
 
@@ -9,6 +11,10 @@ const FeaturedSection = () => {
 
   const mainPost = published.find(p => p.featured) || published[0];
   const sidebarPosts = published.filter(p => p.id !== mainPost?.id).slice(0, 3);
+
+  if (state.loading) {
+    return <SkeletonSection variant="carousel" count={1} />;
+  }
 
   const timeAgo = (dateStr: string) => {
     if (!dateStr) return "Recently";
@@ -29,9 +35,10 @@ const FeaturedSection = () => {
 
       <ScrollReveal direction="scale" duration={1}>
         <div className="relative rounded-2xl overflow-hidden h-[520px] md:h-[580px]">
-          <img
+          <LazyImage
             src={mainPost.coverImage || featuredHero}
             alt={mainPost.title}
+            containerClassName="w-full h-full"
             className="w-full h-full object-cover"
           />
 

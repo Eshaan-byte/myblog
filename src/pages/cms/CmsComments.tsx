@@ -155,13 +155,21 @@ export default function CmsComments() {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("comments").delete().eq("id", id);
+    const { data, error } = await supabase.from("comments").delete().eq("id", id).select();
     if (error) {
-      toast.error(error.message);
+      console.error("Delete error:", error);
+      toast.error("Failed to delete comment: " + error.message);
       return;
     }
+    
+    // Check if the delete actually affected any rows
+    if (!data || data.length === 0) {
+      toast.error("Comment could not be deleted. You may not have permission.");
+      return;
+    }
+    
     setComments(prev => prev.filter(c => c.id !== id));
-    toast.success("Comment deleted");
+    toast.success("Comment deleted successfully");
     setDeleteId(null);
     setSelected(s => { const n = new Set(s); n.delete(id); return n; });
   };
@@ -169,10 +177,21 @@ export default function CmsComments() {
   const handleBulkDelete = async () => {
     const ids = Array.from(selected);
     if (!ids.length) return;
-    const { error } = await supabase.from("comments").delete().in("id", ids);
-    if (error) { toast.error(error.message); return; }
+    const { data, error } = await supabase.from("comments").delete().in("id", ids).select();
+    if (error) {
+      console.error("Bulk delete error:", error);
+      toast.error("Failed to delete comments: " + error.message);
+      return;
+    }
+    
+    // Check if the delete actually affected any rows
+    if (!data || data.length === 0) {
+      toast.error("No comments could be deleted. You may not have permission.");
+      return;
+    }
+    
     setComments(prev => prev.filter(c => !ids.includes(c.id)));
-    toast.success(`${ids.length} comments deleted`);
+    toast.success(`${data.length} comments deleted successfully`);
     setSelected(new Set());
   };
 
@@ -180,7 +199,17 @@ export default function CmsComments() {
     const ids = Array.from(selected);
     if (!ids.length) return;
     const { error } = await supabase.from("comments").update({ status }).in("id", ids);
-    if (error) { toast.error("Failed to update comments: " + error.message); return; }
+    if (error) {
+      // If status column doesn't exist, update in-memory only
+      if (error.message.includes("status") || error.code === "42703") {
+        setComments(prev => prev.map(c => ids.includes(c.id) ? { ...c, status } : c));
+        toast.success(`${ids.length} comments ${status} (local only — run migration to persist)`);
+        setSelected(new Set());
+        return;
+      }
+      toast.error("Failed to update comments: " + error.message);
+      return;
+    }
     setComments(prev => prev.map(c => ids.includes(c.id) ? { ...c, status } : c));
     toast.success(`${ids.length} comments ${status}`);
     setSelected(new Set());

@@ -2,6 +2,8 @@ import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
+import LazyImage from "@/components/LazyImage";
+import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
 import thumb4 from "@/assets/article-thumb-4.jpg";
 import card1 from "@/assets/article-card-1.jpg";
@@ -28,6 +30,10 @@ const BestOfMonth = () => {
   const published = state.posts
     .filter(p => p.status === "published")
     .sort((a, b) => new Date(b.publishDate).getTime() - new Date(a.publishDate).getTime());
+
+  if (state.loading) {
+    return <SkeletonSection variant="grid" count={5} />;
+  }
 
   const totalPages = Math.max(1, Math.ceil(published.length / PAGE_SIZE));
   const articles = published.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
@@ -57,13 +63,12 @@ const BestOfMonth = () => {
         {articles.map((article, i) => (
           <ScrollReveal key={article.id} delay={0.1 + i * 0.08} direction="up">
             <Link to={`/article/${article.slug}`} className="block cursor-pointer group card-hover-glass">
-              <div className="lux-image h-[180px] mb-3 rounded-xl">
-                <img
-                  src={article.coverImage || fallbackImages[i % fallbackImages.length]}
-                  alt={article.title}
-                  className="w-full h-full object-cover rounded-xl"
-                />
-              </div>
+              <LazyImage
+                src={article.coverImage || fallbackImages[i % fallbackImages.length]}
+                alt={article.title}
+                containerClassName="lux-image h-[180px] mb-3 rounded-xl w-full"
+                className="w-full h-full object-cover rounded-xl"
+              />
               <div className="flex items-center gap-2 text-xs mb-1.5">
                 <span className="text-category font-medium">{article.category}</span>
                 <span className="text-muted-foreground">· {timeAgo(article.publishDate)}</span>

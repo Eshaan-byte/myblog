@@ -1,6 +1,8 @@
 import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
+import LazyImage from "@/components/LazyImage";
+import { SkeletonSidebar } from "@/components/skeletons";
 import thumb1 from "@/assets/article-thumb-1.jpg";
 import thumb2 from "@/assets/article-thumb-2.jpg";
 import thumb3 from "@/assets/article-thumb-3.jpg";
@@ -16,6 +18,10 @@ const RecommendedSidebar = () => {
     .filter(p => p.status === "published")
     .sort((a, b) => Number(b.featured || false) - Number(a.featured || false))
     .slice(0, 5);
+
+  if (state.loading) {
+    return <SkeletonSidebar />;
+  }
 
   const timeAgo = (dateStr: string) => {
     if (!dateStr) return "Recently";
@@ -45,9 +51,7 @@ const RecommendedSidebar = () => {
             <ScrollReveal key={article.id} delay={0.3 + i * 0.08} direction="right">
               {i === 0 ? (
                 <Link to={`/article/${article.slug}`} className="relative rounded-xl overflow-hidden h-[180px] cursor-pointer group card-hover-glass block">
-                  <div className="lux-image h-full">
-                    <img src={article.coverImage || fallbackImages[0]} alt={article.title} className="w-full h-full object-cover" />
-                  </div>
+                  <LazyImage src={article.coverImage || fallbackImages[0]} alt={article.title} containerClassName="lux-image h-full" className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/20 to-transparent" />
                   <div className="absolute bottom-0 left-0 right-0 p-4">
                     <div className="flex items-center gap-2 text-xs mb-1">
@@ -69,7 +73,7 @@ const RecommendedSidebar = () => {
                     </p>
                   </div>
                   <div className="lux-image w-16 h-16 flex-shrink-0">
-                    <img src={article.coverImage || fallbackImages[i % 5]} alt={article.title} className="w-full h-full object-cover" />
+                    <LazyImage src={article.coverImage || fallbackImages[i % 5]} alt={article.title} containerClassName="w-full h-full" className="w-full h-full object-cover" />
                   </div>
                 </Link>
               )}

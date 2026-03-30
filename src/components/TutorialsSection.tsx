@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
 import SectionHeader from "@/components/SectionHeader";
 import PostCard from "@/components/PostCard";
+import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
 import thumb1 from "@/assets/article-thumb-1.jpg";
 import thumb2 from "@/assets/article-thumb-2.jpg";
@@ -25,6 +26,10 @@ const timeAgo = (dateStr: string) => {
 
 const TutorialsSection = () => {
   const { state } = useCms();
+
+  if (state.loading) {
+    return <SkeletonSection variant="grid" count={4} />;
+  }
 
   const tutorials = state.posts
     .filter(p =>

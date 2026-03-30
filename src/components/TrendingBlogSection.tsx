@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
 import SectionHeader from "@/components/SectionHeader";
 import PostCard from "@/components/PostCard";
+import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
 import thumb1 from "@/assets/article-thumb-1.jpg";
 import thumb2 from "@/assets/article-thumb-2.jpg";
@@ -12,6 +13,10 @@ const fallbackImages = [thumb1, thumb2];
 const TrendingBlogSection = () => {
   const { state } = useCms();
   const published = state.posts.filter(p => p.status === "published");
+  
+  if (state.loading) {
+    return <SkeletonSection variant="grid" count={4} />;
+  }
   
   // Find a featured post, if any
   const featuredPost = published.find(p => p.featured);

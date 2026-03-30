@@ -2,6 +2,8 @@ import { ArrowRight, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroOrb from "@/assets/hero-orb.png";
 import ScrollReveal from "@/components/ScrollReveal";
+import LazyImage from "@/components/LazyImage";
+import { SkeletonHero } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
 
 const HeroArticle = () => {
@@ -9,6 +11,10 @@ const HeroArticle = () => {
   const published = state.posts.filter(p => p.status === "published");
   // Prefer a featured post; fall back to the most recent published
   const hero = published.find(p => p.featured) ?? published[0];
+
+  if (state.loading) {
+    return <SkeletonHero />;
+  }
 
   if (!hero) {
     return (
@@ -33,9 +39,7 @@ const HeroArticle = () => {
     <ScrollReveal direction="up" delay={0.1} duration={0.9}>
       <div className="relative glass-panel rounded-2xl p-8 overflow-hidden min-h-[400px] flex flex-col justify-between">
         {hero.coverImage && (
-          <div className="absolute inset-0 rounded-2xl overflow-hidden">
-            <img src={hero.coverImage} alt={hero.title} className="w-full h-full object-cover opacity-20" />
-          </div>
+          <LazyImage src={hero.coverImage} alt={hero.title} containerClassName="absolute inset-0 rounded-2xl overflow-hidden" className="w-full h-full object-cover opacity-20" />
         )}
         <div className="relative z-10">
           <div className="inline-block bg-muted/60 backdrop-blur-sm px-3 py-1 rounded-md mb-6">

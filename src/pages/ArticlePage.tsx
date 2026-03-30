@@ -5,6 +5,8 @@ import DOMPurify from "dompurify";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ScrollReveal from "@/components/ScrollReveal";
+import LazyImage from "@/components/LazyImage";
+import { SkeletonHero, SkeletonSection } from "@/components/skeletons";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCms } from "@/contexts/CmsContext";
@@ -348,9 +350,41 @@ const ArticlePage = () => {
     return (
       <div className="min-h-screen bg-background">
         <Navbar />
-        <div className="flex items-center justify-center py-20">
-          <div className="text-muted-foreground">Loading article...</div>
-        </div>
+        <main className="max-w-[1320px] mx-auto px-6 py-8">
+          <ScrollReveal direction="up">
+            <div className="flex items-center gap-2 text-sm mb-6 h-4 bg-muted rounded animate-pulse" />
+          </ScrollReveal>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+            <div>
+              <ScrollReveal direction="scale" duration={0.9}>
+                <div className="rounded-2xl overflow-hidden h-[360px] md:h-[440px] mb-8 bg-muted animate-pulse" />
+              </ScrollReveal>
+
+              <ScrollReveal direction="up" delay={0.1}>
+                <div className="space-y-4">
+                  <div className="h-4 bg-muted rounded animate-pulse w-32" />
+                  <div className="h-8 bg-muted rounded animate-pulse w-3/4" />
+                  <div className="h-8 bg-muted rounded animate-pulse w-2/3" />
+                </div>
+              </ScrollReveal>
+
+              <ScrollReveal direction="up" delay={0.2}>
+                <SkeletonSection variant="card" count={5} />
+              </ScrollReveal>
+            </div>
+
+            <aside>
+              <ScrollReveal direction="right" delay={0.2}>
+                <div className="glass-panel rounded-2xl p-5 animate-pulse space-y-4">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-12 bg-muted rounded animate-pulse" />
+                  ))}
+                </div>
+              </ScrollReveal>
+            </aside>
+          </div>
+        </main>
       </div>
     );
   }
@@ -380,9 +414,12 @@ const ArticlePage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
           <div>
             <ScrollReveal direction="scale" duration={0.9}>
-              <div className="rounded-2xl overflow-hidden h-[360px] md:h-[440px] mb-8">
-                <img src={article.cover_image || articleHero} alt={article.title} className="w-full h-full object-cover" />
-              </div>
+              <LazyImage
+                src={article.cover_image || articleHero}
+                alt={article.title}
+                containerClassName="rounded-2xl overflow-hidden h-[360px] md:h-[440px] mb-8 w-full"
+                className="w-full h-full object-cover"
+              />
             </ScrollReveal>
 
             <ScrollReveal direction="up" delay={0.1}>
@@ -518,10 +555,11 @@ const ArticlePage = () => {
                     <ScrollReveal key={comment.id} direction="up" delay={i * 0.06}>
                       <div className="glass-panel rounded-xl p-4 card-hover-glass">
                         <div className="flex items-start gap-3">
-                          <img
+                          <LazyImage
                             src={comment.profile?.avatar_url || thumb1}
                             alt={comment.profile?.display_name || "User"}
-                            className="w-9 h-9 rounded-full object-cover flex-shrink-0"
+                            containerClassName="w-9 h-9 rounded-full flex-shrink-0"
+                            className="w-full h-full object-cover rounded-full"
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
@@ -572,9 +610,7 @@ const ArticlePage = () => {
                             {blog.title}
                           </p>
                         </div>
-                        <div className="lux-image w-16 h-16 flex-shrink-0">
-                          <img src={blog.image} alt={blog.title} className="w-full h-full object-cover" />
-                        </div>
+                        <LazyImage src={blog.image} alt={blog.title} containerClassName="lux-image w-16 h-16 flex-shrink-0" className="w-full h-full object-cover" />
                       </Link>
                     </ScrollReveal>
                   ))}

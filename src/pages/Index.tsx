@@ -10,6 +10,8 @@ import TrendingBlogSection from "@/components/TrendingBlogSection";
 import ResourcesHighlight from "@/components/ResourcesHighlight";
 import NewsletterSection from "@/components/NewsletterSection";
 import BestOfMonth from "@/components/BestOfMonth";
+import LazyLoadSection from "@/components/LazyLoadSection";
+import { SkeletonSection } from "@/components/skeletons";
 
 const Index = () => {
   return (
@@ -28,22 +30,34 @@ const Index = () => {
         </div>
 
         {/* Featured News */}
-        <FeaturedSection />
+        <LazyLoadSection fallback={<SkeletonSection variant="carousel" count={1} />}>
+          <FeaturedSection />
+        </LazyLoadSection>
 
         {/* Latest Opportunities */}
-        <OpportunitiesSection />
+        <LazyLoadSection fallback={<SkeletonSection variant="grid" count={4} />}>
+          <OpportunitiesSection />
+        </LazyLoadSection>
 
         {/* Popular Tutorials */}
-        <TutorialsSection />
+        <LazyLoadSection fallback={<SkeletonSection variant="grid" count={4} />}>
+          <TutorialsSection />
+        </LazyLoadSection>
 
         {/* Trending Tech Blog */}
-        <TrendingBlogSection />
+        <LazyLoadSection fallback={<SkeletonSection variant="grid" count={4} />}>
+          <TrendingBlogSection />
+        </LazyLoadSection>
 
         {/* Resources & Tools */}
-        <ResourcesHighlight />
+        <LazyLoadSection fallback={<SkeletonSection variant="grid" count={6} />}>
+          <ResourcesHighlight />
+        </LazyLoadSection>
 
         {/* Best of Month */}
-        <BestOfMonth />
+        <LazyLoadSection fallback={<SkeletonSection variant="grid" count={5} />}>
+          <BestOfMonth />
+        </LazyLoadSection>
 
         {/* Newsletter */}
         <NewsletterSection />

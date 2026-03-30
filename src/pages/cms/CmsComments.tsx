@@ -26,29 +26,93 @@ interface RealComment {
 export default function CmsComments() {
   const [comments, setComments] = useState<RealComment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [tab, setTab] = useState<string>("all");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const fetchComments = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    setFetchError(null);
+
+    // Step 1: Fetch comments (without profile join to avoid FK issues)
+    const { data: rawComments, error: commentsError } = await supabase
       .from("comments")
-      .select(`
-        id, content, created_at, user_id, article_id, status,
-        profile:profiles(username, display_name),
-        article:articles(title, slug)
-      `)
+      .select("id, content, created_at, user_id, article_id, status")
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setComments(data.map((c: any) => ({
-        ...c,
-        status: c.status || "approved",
-        profile: Array.isArray(c.profile) ? c.profile[0] : c.profile,
-        article: Array.isArray(c.article) ? c.article[0] : c.article,
-      })));
+    if (commentsError) {
+      // If status column doesn't exist, retry without it
+      const { data: fallbackComments, error: fallbackError } = await supabase
+        .from("comments")
+        .select("id, content, created_at, user_id, article_id")
+        .order("created_at", { ascending: false });
+
+      if (fallbackError) {
+        setFetchError("Failed to load comments: " + fallbackError.message);
+        setLoading(false);
+        return;
+      }
+
+      return await enrichComments((fallbackComments || []).map((c: any) => ({ ...c, status: "approved" })));
     }
+
+    await enrichComments((rawComments || []).map((c: any) => ({ ...c, status: c.status || "approved" })));
+  };
+
+  // Step 2: Fetch profiles and articles separately to avoid FK join issues
+  const enrichComments = async (rawComments: any[]) => {
+    if (rawComments.length === 0) {
+      setComments([]);
+      setLoading(false);
+      return;
+    }
+
+    const userIds = [...new Set(rawComments.map(c => c.user_id).filter(Boolean))];
+    const articleIds = [...new Set(rawComments.map(c => c.article_id).filter(Boolean))];
+
+    // Fetch profiles by user_id
+    let profileMap: Record<string, { username: string; display_name: string | null }> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name")
+        .in("user_id", userIds);
+      if (profiles) {
+        profileMap = profiles.reduce((acc: any, p: any) => {
+          acc[p.user_id] = { username: p.username, display_name: p.display_name };
+          return acc;
+        }, {});
+      }
+    }
+
+    // Fetch articles by id
+    let articleMap: Record<string, { title: string; slug: string }> = {};
+    if (articleIds.length > 0) {
+      const { data: articles } = await supabase
+        .from("articles")
+        .select("id, title, slug")
+        .in("id", articleIds);
+      if (articles) {
+        articleMap = articles.reduce((acc: any, a: any) => {
+          acc[a.id] = { title: a.title, slug: a.slug };
+          return acc;
+        }, {});
+      }
+    }
+
+    const enriched: RealComment[] = rawComments.map(c => ({
+      id: c.id,
+      content: c.content,
+      created_at: c.created_at,
+      user_id: c.user_id,
+      article_id: c.article_id,
+      status: c.status,
+      profile: profileMap[c.user_id] || null,
+      article: articleMap[c.article_id] || null,
+    }));
+
+    setComments(enriched);
     setLoading(false);
   };
 
@@ -73,17 +137,21 @@ export default function CmsComments() {
   const updateStatus = async (id: string, status: "approved" | "spam" | "pending") => {
     const { error } = await supabase
       .from("comments")
-      .update({ status } as any)
+      .update({ status })
       .eq("id", id);
 
     if (error) {
-      // status column may not exist yet — update in-memory only
-      setComments(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-      toast.success(status === "approved" ? "Comment approved" : "Marked as spam");
-    } else {
-      setComments(prev => prev.map(c => c.id === id ? { ...c, status } : c));
-      toast.success(status === "approved" ? "Comment approved" : "Marked as spam");
+      // If status column doesn't exist, update in-memory only
+      if (error.message.includes("status") || error.code === "42703") {
+        setComments(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+        toast.success((status === "approved" ? "Comment approved" : status === "spam" ? "Marked as spam" : "Set to pending") + " (local only — run migration to persist)");
+        return;
+      }
+      toast.error("Failed to update comment status: " + error.message);
+      return;
     }
+    setComments(prev => prev.map(c => c.id === id ? { ...c, status } : c));
+    toast.success(status === "approved" ? "Comment approved" : status === "spam" ? "Marked as spam" : "Set to pending");
   };
 
   const handleDelete = async (id: string) => {
@@ -111,7 +179,8 @@ export default function CmsComments() {
   const handleBulkStatus = async (status: "approved" | "spam") => {
     const ids = Array.from(selected);
     if (!ids.length) return;
-    await supabase.from("comments").update({ status } as any).in("id", ids);
+    const { error } = await supabase.from("comments").update({ status }).in("id", ids);
+    if (error) { toast.error("Failed to update comments: " + error.message); return; }
     setComments(prev => prev.map(c => ids.includes(c.id) ? { ...c, status } : c));
     toast.success(`${ids.length} comments ${status}`);
     setSelected(new Set());
@@ -142,6 +211,12 @@ export default function CmsComments() {
           <button onClick={() => handleBulkStatus("approved")} className="px-2.5 py-1 rounded text-xs font-medium" style={{ background: "rgba(34, 197, 94, 0.15)", color: "#22c55e" }}>Approve</button>
           <button onClick={() => handleBulkStatus("spam")} className="px-2.5 py-1 rounded text-xs font-medium" style={{ background: "rgba(234, 179, 8, 0.15)", color: "#eab308" }}>Spam</button>
           <button onClick={handleBulkDelete} className="px-2.5 py-1 rounded text-xs font-medium" style={{ background: "rgba(239, 68, 68, 0.15)", color: "#ef4444" }}>Delete</button>
+        </div>
+      )}
+
+      {fetchError && (
+        <div className="rounded-xl px-4 py-3 text-sm" style={{ background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.3)", color: "#ef4444" }}>
+          {fetchError}
         </div>
       )}
 

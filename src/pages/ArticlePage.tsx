@@ -70,8 +70,7 @@ const ArticlePage = () => {
     setLoading(true);
 
     if (!slug) {
-      setArticle(fallbackArticle);
-      setLoading(false);
+      fetchLatestArticle();
       return;
     }
 
@@ -88,7 +87,7 @@ const ArticlePage = () => {
         cover_image: cmsPost.coverImage,
         read_time_minutes: Math.max(1, Math.ceil(cmsPost.content.replace(/<[^>]*>/g, "").split(/\s+/).filter(Boolean).length / 200)),
         created_at: cmsPost.createdAt,
-        author_id: null,
+        author_id: cmsPost.authorId || null,
       });
       setAuthorName(cmsPost.author || "Admin");
       const related = cmsState.posts
@@ -104,7 +103,7 @@ const ArticlePage = () => {
   }, [slug, cmsState.posts]);
 
   useEffect(() => {
-    if (article?.id && article.id !== "fallback") {
+    if (article?.id) {
       fetchComments();
       fetchLikes();
       fetchInteractions();
@@ -112,12 +111,38 @@ const ArticlePage = () => {
     }
   }, [article?.id, user]);
 
+  const fetchLatestArticle = async () => {
+    const { data } = await supabase
+      .from("articles")
+      .select("*")
+      .eq("status", "published")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!data) {
+      setArticle(fallbackArticle);
+      setLoading(false);
+      return;
+    }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("display_name, username")
+      .eq("user_id", data.author_id)
+      .single();
+
+    setAuthorName(profile?.display_name || profile?.username || "Unknown");
+    setArticle(data);
+    setLoading(false);
+  };
+
   const fetchArticle = async () => {
     const { data, error } = await supabase
       .from("articles")
       .select("*")
       .eq("slug", slug!)
-      .eq("published", true)
+      .eq("status", "published")
       .single();
 
     if (error || !data) {
@@ -137,21 +162,34 @@ const ArticlePage = () => {
     setLoading(false);
   };
 
-  // Single optimized query — no N+1 loops
   const fetchComments = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("comments")
-      .select(`
-        id, content, created_at, user_id,
-        profile:profiles(username, display_name, avatar_url)
-      `)
+      .select("id, content, created_at, user_id")
       .eq("article_id", article.id)
       .order("created_at", { ascending: false });
 
-    if (!data) return;
+    if (error || !data) return;
+
+    // Fetch profiles separately to avoid FK join issues
+    const userIds = [...new Set(data.map((c: any) => c.user_id).filter(Boolean))];
+    let profileMap: Record<string, any> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, username, display_name, avatar_url")
+        .in("user_id", userIds);
+      if (profiles) {
+        profileMap = profiles.reduce((acc: any, p: any) => {
+          acc[p.user_id] = { username: p.username, display_name: p.display_name, avatar_url: p.avatar_url };
+          return acc;
+        }, {});
+      }
+    }
+
     setComments(data.map((c: any) => ({
       ...c,
-      profile: Array.isArray(c.profile) ? c.profile[0] : c.profile,
+      profile: profileMap[c.user_id] || null,
     })));
   };
 
@@ -205,7 +243,7 @@ const ArticlePage = () => {
     const { data } = await supabase
       .from("articles")
       .select("id, title, slug, cover_image, category, created_at")
-      .eq("published", true)
+      .eq("status", "published")
       .neq("id", article.id)
       .order("created_at", { ascending: false })
       .limit(5);
@@ -215,14 +253,15 @@ const ArticlePage = () => {
 
   const handleToggleLike = async () => {
     if (!user) { toast.error("Please sign in to like articles"); return; }
-    if (article.id === "fallback") return;
 
     if (liked) {
-      await supabase.from("likes").delete().eq("article_id", article.id).eq("user_id", user.id);
+      const { error } = await supabase.from("likes").delete().eq("article_id", article.id).eq("user_id", user.id);
+      if (error) { toast.error("Failed to unlike: " + error.message); return; }
       setLiked(false);
       setLikesCount(c => c - 1);
     } else {
-      await supabase.from("likes").insert({ article_id: article.id, user_id: user.id });
+      const { error } = await supabase.from("likes").insert({ article_id: article.id, user_id: user.id });
+      if (error) { toast.error("Failed to like: " + error.message); return; }
       setLiked(true);
       setLikesCount(c => c + 1);
     }
@@ -230,7 +269,6 @@ const ArticlePage = () => {
 
   const handleToggleSave = async () => {
     if (!user) { toast.error("Please sign in to bookmark articles"); return; }
-    if (article.id === "fallback") return;
 
     try {
       if (isSaved) {
@@ -249,7 +287,7 @@ const ArticlePage = () => {
 
   const handleToggleFollow = async () => {
     if (!user) { toast.error("Please sign in to follow authors"); return; }
-    if (article.id === "fallback" || !article.author_id) return;
+    if (!article.author_id) return;
 
     try {
       if (isFollowing) {
@@ -267,29 +305,35 @@ const ArticlePage = () => {
   };
 
   const handleDeleteComment = async (commentId: string) => {
-    if (!isAdmin && !(user && comments.find(c => c.id === commentId)?.user_id === user.id)) return;
-    const { error } = await supabase.from("comments").delete().eq("id", commentId);
-    if (!error) {
-      toast.success("Comment deleted");
-      setComments(prev => prev.filter(c => c.id !== commentId));
+    if (!isAdmin && !(user && comments.find(c => c.id === commentId)?.user_id === user.id)) {
+      toast.error("You can only delete your own comments");
+      return;
     }
+    const { error } = await supabase.from("comments").delete().eq("id", commentId);
+    if (error) {
+      toast.error("Failed to delete comment: " + error.message);
+      return;
+    }
+    toast.success("Comment deleted");
+    setComments(prev => prev.filter(c => c.id !== commentId));
   };
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
     if (!user) { toast.error("Please sign in to comment"); return; }
-    if (article.id === "fallback") { toast.error("Comments are disabled for this demo article"); return; }
 
+    const commentStatus = cmsState.settings.moderateComments ? "pending" : "approved";
     const { error } = await supabase.from("comments").insert({
       article_id: article.id,
       user_id: user.id,
       content: newComment.trim(),
+      status: commentStatus,
     });
 
     if (error) { toast.error(error.message); return; }
     setNewComment("");
     fetchComments();
-    toast.success("Comment posted!");
+    toast.success(commentStatus === "pending" ? "Comment submitted for review!" : "Comment posted!");
   };
 
   const timeAgo = (dateStr: string) => {

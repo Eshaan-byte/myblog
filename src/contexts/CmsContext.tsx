@@ -117,6 +117,7 @@ interface CmsState {
   activity: ActivityItem[];
   opportunities: Opportunity[];
   resources: CmsResource[];
+  loading: boolean;
 }
 
 type CmsAction =
@@ -230,6 +231,7 @@ const initialState: CmsState = {
   activity: [],
   opportunities: loadOpportunities(),
   resources: loadResources(),
+  loading: true,
 };
 
 function cmsReducer(state: CmsState, action: CmsAction): CmsState {
@@ -292,6 +294,8 @@ function cmsReducer(state: CmsState, action: CmsAction): CmsState {
       return { ...state, resources: state.resources.map(r => r.id === action.payload.id ? action.payload : r) };
     case "DELETE_RESOURCE":
       return { ...state, resources: state.resources.filter(r => r.id !== action.payload) };
+    case "SET_LOADING":
+      return { ...state, loading: action.payload };
     default:
       return state;
   }
@@ -312,12 +316,16 @@ export function CmsProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cmsReducer, initialState);
 
   const fetchPosts = useCallback(async () => {
+    dispatch({ type: "SET_LOADING", payload: true });
     const { data: articlesData, error: articlesError } = await supabase
       .from("articles")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (articlesError || !articlesData) return;
+    if (articlesError || !articlesData) {
+      dispatch({ type: "SET_LOADING", payload: false });
+      return;
+    }
 
     const authorIds = [...new Set(articlesData.map((a: any) => a.author_id).filter(Boolean))];
     let profileMap: Record<string, any> = {};
@@ -358,6 +366,7 @@ export function CmsProvider({ children }: { children: ReactNode }) {
     }));
 
     dispatch({ type: "SET_POSTS", payload: mappedPosts });
+    dispatch({ type: "SET_LOADING", payload: false });
   }, []);
 
   useEffect(() => {

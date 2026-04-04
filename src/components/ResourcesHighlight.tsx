@@ -1,10 +1,15 @@
 import ScrollReveal from "@/components/ScrollReveal";
 import SectionHeader from "@/components/SectionHeader";
 import ResourceCard from "@/components/ResourceCard";
+import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
 
 const ResourcesHighlight = () => {
   const { state } = useCms();
+
+  if (state.loading) {
+    return <SkeletonSection variant="grid" count={6} />;
+  }
 
   const resources = [...state.resources]
     .sort((a, b) => Number(b.featured) - Number(a.featured) || b.rating - a.rating)

@@ -2,6 +2,7 @@ import { Briefcase, GraduationCap, Trophy, Award } from "lucide-react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
 import SectionHeader from "@/components/SectionHeader";
+import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
 
 const typeIcons: Record<string, React.ReactNode> = {
@@ -27,6 +28,10 @@ const typeToSlug: Record<string, string> = {
 
 const OpportunitiesSection = () => {
   const { state } = useCms();
+
+  if (state.loading) {
+    return <SkeletonSection variant="grid" count={4} />;
+  }
 
   const opportunities = [...state.opportunities]
     .sort((a, b) => Number(b.featured) - Number(a.featured) || a.daysLeft - b.daysLeft)

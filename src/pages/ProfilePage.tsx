@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import ScrollReveal from "@/components/ScrollReveal";
+import { SkeletonSection } from "@/components/skeletons";
 import { User, Calendar, Shield, FileText, Clock, Pencil, Camera, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
@@ -169,8 +170,27 @@ const ProfilePage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="max-w-[1320px] mx-auto px-6 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-8">
+            {/* Profile Header Skeleton */}
+            <div className="glass-panel rounded-2xl p-6 space-y-4">
+              <div className="w-24 h-24 rounded-full bg-muted animate-pulse mx-auto" />
+              <div className="h-6 bg-muted rounded animate-pulse" />
+              <div className="h-4 bg-muted rounded animate-pulse w-2/3 mx-auto" />
+              <div className="space-y-2">
+                <div className="h-4 bg-muted rounded animate-pulse" />
+                <div className="h-4 bg-muted rounded animate-pulse w-3/4" />
+              </div>
+            </div>
+
+            {/* Content Skeleton */}
+            <div className="space-y-6">
+              <SkeletonSection variant="card" count={4} />
+            </div>
+          </div>
+        </main>
       </div>
     );
   }

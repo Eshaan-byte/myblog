@@ -20,8 +20,10 @@ export default function CmsMediaLibrary() {
   const [media, setMedia] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getFolder = () => `${user!.id}/article-images`;
@@ -55,35 +57,63 @@ export default function CmsMediaLibrary() {
 
   useEffect(() => { if (user) fetchMedia(); }, [user]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user) return;
+  const uploadFiles = async (files: File[]) => {
+    if (!user || files.length === 0) return;
 
     const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!allowed.includes(file.type)) {
-      toast.error("Only JPEG, PNG, WebP, and GIF images are allowed");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File must be under 10 MB");
-      return;
-    }
+    const validFiles = files.filter(file => {
+      if (!allowed.includes(file.type)) {
+        toast.error(`"${file.name}" skipped — only JPEG, PNG, WebP, and GIF allowed`);
+        return false;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error(`"${file.name}" skipped — must be under 10 MB`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validFiles.length === 0) return;
 
     setUploading(true);
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const path = `${getFolder()}/${Date.now()}-${safeName}`;
+    setUploadProgress({ done: 0, total: validFiles.length });
+    let successCount = 0;
 
-    const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+    for (const file of validFiles) {
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${getFolder()}/${Date.now()}-${safeName}`;
 
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Image uploaded!");
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: false });
+
+      if (error) {
+        toast.error(`Failed "${file.name}": ${error.message}`);
+      } else {
+        successCount++;
+      }
+      setUploadProgress(prev => ({ ...prev, done: prev.done + 1 }));
+    }
+
+    if (successCount > 0) {
+      toast.success(`${successCount} image${successCount > 1 ? "s" : ""} uploaded!`);
       await fetchMedia();
     }
 
     setUploading(false);
+    setUploadProgress({ done: 0, total: 0 });
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    await uploadFiles(Array.from(files));
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    await uploadFiles(files);
   };
 
   const handleCopy = (url: string, id: string) => {
@@ -112,12 +142,24 @@ export default function CmsMediaLibrary() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
+    <div
+      className="space-y-4"
+      onDragOver={e => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={e => { e.preventDefault(); if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) setDragging(false); }}
+      onDrop={handleDrop}
+    >
+      <div className="flex items-center justify-between">
+        {uploading && uploadProgress.total > 0 && (
+          <span className="text-xs" style={{ color: "#9ca3af" }}>
+            Uploading {uploadProgress.done}/{uploadProgress.total}...
+          </span>
+        )}
+        <div className="flex-1" />
         <input
           ref={fileInputRef}
           type="file"
           accept="image/jpeg,image/png,image/webp,image/gif"
+          multiple
           onChange={handleFileChange}
           className="hidden"
           id="media-upload"
@@ -128,17 +170,32 @@ export default function CmsMediaLibrary() {
           style={{ background: uploading ? "#4b5563" : "#f59e0b", color: "#0f1117", pointerEvents: uploading ? "none" : "auto" }}
         >
           <Upload className="w-4 h-4" />
-          {uploading ? "Uploading..." : "Upload Image"}
+          {uploading ? "Uploading..." : "Upload Images"}
         </label>
       </div>
+
+      {/* Drag overlay */}
+      {dragging && (
+        <div className="fixed inset-0 z-40 bg-black/50 flex items-center justify-center pointer-events-none">
+          <div className="rounded-2xl border-2 border-dashed border-amber-500 p-12 text-center" style={{ background: "rgba(26,29,39,0.95)" }}>
+            <Upload className="w-10 h-10 mx-auto mb-3" style={{ color: "#f59e0b" }} />
+            <p className="text-sm font-medium" style={{ color: "#f1f0eb" }}>Drop images to upload</p>
+            <p className="text-xs mt-1" style={{ color: "#6b7280" }}>JPEG, PNG, WebP, GIF — max 10 MB each</p>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12" style={{ color: "#6b7280" }}>Loading media...</div>
       ) : media.length === 0 ? (
-        <div className="text-center py-16 rounded-xl" style={cardStyle}>
+        <div
+          className="text-center py-16 rounded-xl border-2 border-dashed cursor-pointer transition-colors hover:border-amber-500/40"
+          style={{ ...cardStyle, borderColor: "#2a2d3e" }}
+          onClick={() => !uploading && fileInputRef.current?.click()}
+        >
           <Upload className="w-8 h-8 mx-auto mb-3" style={{ color: "#4b5563" }} />
-          <p className="text-sm" style={{ color: "#6b7280" }}>No images yet. Click "Upload Image" to add your first image.</p>
-          <p className="text-xs mt-1" style={{ color: "#4b5563" }}>Supported: JPEG, PNG, WebP, GIF — max 10 MB</p>
+          <p className="text-sm" style={{ color: "#6b7280" }}>No images yet. Click here or drag images to upload.</p>
+          <p className="text-xs mt-1" style={{ color: "#4b5563" }}>Supported: JPEG, PNG, WebP, GIF — max 10 MB each</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">

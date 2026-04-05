@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -28,8 +28,15 @@ import CmsSettings from "./pages/cms/CmsSettings";
 import CmsUsers from "./pages/cms/CmsUsers";
 import CmsOpportunities from "./pages/cms/CmsOpportunities";
 import CmsResources from "./pages/cms/CmsResources";
+import BottomNav from "./components/BottomNav";
 
 const queryClient = new QueryClient();
+
+function AppBottomNav() {
+  const { pathname } = useLocation();
+  if (pathname.startsWith("/cms") || pathname === "/auth") return null;
+  return <BottomNav />;
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -71,6 +78,7 @@ const App = () => (
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <AppBottomNav />
             </CmsProvider>
           </AuthProvider>
         </BrowserRouter>

@@ -6,6 +6,12 @@ import { useCms } from "@/contexts/CmsContext";
 const cardStyle = { background: "#1a1d27", border: "1px solid #2a2d3e" };
 const amber = "#f59e0b";
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return "—";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+};
+
 export default function CmsDashboard() {
   const { state } = useCms();
 
@@ -97,7 +103,7 @@ export default function CmsDashboard() {
                     <StatusBadge status={p.status} />
                   </td>
                   <td className="py-2.5 px-3" style={{ color: "#9ca3af" }}>{p.views.toLocaleString()}</td>
-                  <td className="py-2.5 px-3" style={{ color: "#9ca3af" }}>{p.createdAt}</td>
+                  <td className="py-2.5 px-3" style={{ color: "#9ca3af" }}>{formatDate(p.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

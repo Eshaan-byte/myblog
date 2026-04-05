@@ -81,6 +81,7 @@ const Footer = () => {
   ];
 
   return (
+    <>
     <footer className="border-t border-border/40 mt-16">
       <div className="max-w-[1320px] mx-auto px-6 py-12">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-12">
@@ -138,6 +139,9 @@ const Footer = () => {
         </div>
       </div>
     </footer>
+    {/* Spacer for mobile bottom nav */}
+    <div className="h-16 lg:hidden" />
+    </>
   );
 };
 

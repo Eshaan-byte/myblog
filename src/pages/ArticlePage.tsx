@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, Clock, User, Share2, Heart, MessageCircle, Send, Facebook, LinkIcon, Bookmark, UserPlus, UserCheck, Trash2 } from "lucide-react";
 import DOMPurify from "dompurify";
 import Navbar from "@/components/Navbar";
@@ -56,9 +56,11 @@ interface Comment {
 const ArticlePage = () => {
   const { slug } = useParams();
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const { state: cmsState } = useCms();
   const [article, setArticle] = useState<any>(null);
   const [authorName, setAuthorName] = useState("Alex Thompson");
+  const [authorUsername, setAuthorUsername] = useState<string | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [liked, setLiked] = useState(false);
@@ -92,6 +94,11 @@ const ArticlePage = () => {
         author_id: cmsPost.authorId || null,
       });
       setAuthorName(cmsPost.author || "Admin");
+      // Fetch author username for profile link
+      if (cmsPost.authorId) {
+        supabase.from("profiles").select("username").eq("user_id", cmsPost.authorId).single()
+          .then(({ data: p }) => { if (p) setAuthorUsername(p.username); });
+      }
       const related = cmsState.posts
         .filter(p => p.status === "published" && p.slug !== slug)
         .slice(0, 5)
@@ -135,6 +142,7 @@ const ArticlePage = () => {
       .single();
 
     setAuthorName(profile?.display_name || profile?.username || "Unknown");
+    setAuthorUsername(profile?.username || null);
     setArticle(data);
     setLoading(false);
   };
@@ -160,6 +168,7 @@ const ArticlePage = () => {
       .single();
 
     setAuthorName(profile?.display_name || profile?.username || "Unknown");
+    setAuthorUsername(profile?.username || null);
     setArticle(data);
     setLoading(false);
   };
@@ -254,7 +263,7 @@ const ArticlePage = () => {
   };
 
   const handleToggleLike = async () => {
-    if (!user) { toast.error("Please sign in to like articles"); return; }
+    if (!user) { navigate("/auth"); return; }
 
     if (liked) {
       const { error } = await supabase.from("likes").delete().eq("article_id", article.id).eq("user_id", user.id);
@@ -270,7 +279,7 @@ const ArticlePage = () => {
   };
 
   const handleToggleSave = async () => {
-    if (!user) { toast.error("Please sign in to bookmark articles"); return; }
+    if (!user) { navigate("/auth"); return; }
 
     try {
       if (isSaved) {
@@ -288,16 +297,18 @@ const ArticlePage = () => {
   };
 
   const handleToggleFollow = async () => {
-    if (!user) { toast.error("Please sign in to follow authors"); return; }
+    if (!user) { navigate("/auth"); return; }
     if (!article.author_id) return;
 
     try {
       if (isFollowing) {
-        await supabase.from("followers").delete().eq("author_id", article.author_id).eq("follower_id", user.id);
+        const { error } = await supabase.from("followers").delete().eq("author_id", article.author_id).eq("follower_id", user.id);
+        if (error) { toast.error(error.message); return; }
         setIsFollowing(false);
         toast.success(`Unfollowed ${authorName}`);
       } else {
-        await supabase.from("followers").insert({ author_id: article.author_id, follower_id: user.id });
+        const { error } = await supabase.from("followers").insert({ author_id: article.author_id, follower_id: user.id });
+        if (error) { toast.error(error.message); return; }
         setIsFollowing(true);
         toast.success(`Following ${authorName}`);
       }
@@ -322,7 +333,7 @@ const ArticlePage = () => {
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
-    if (!user) { toast.error("Please sign in to comment"); return; }
+    if (!user) { navigate("/auth"); return; }
 
     const commentStatus = cmsState.settings.moderateComments ? "pending" : "approved";
     const { error } = await supabase.from("comments").insert({
@@ -429,7 +440,7 @@ const ArticlePage = () => {
                   <Clock className="w-3.5 h-3.5" /> {timeAgo(article.created_at)}
                 </span>
                 <span className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
-                  <User className="w-3.5 h-3.5" /> By {authorName}
+                  <User className="w-3.5 h-3.5" /> By {authorUsername ? <Link to={`/profile/${authorUsername}`} className="hover:text-foreground transition-colors underline underline-offset-2">{authorName}</Link> : authorName}
                   {user && user.id !== article.author_id && article.author_id && (
                     <button
                       onClick={handleToggleFollow}
@@ -563,9 +574,13 @@ const ArticlePage = () => {
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-semibold text-foreground">
-                                {comment.profile?.display_name || comment.profile?.username || "User"}
-                              </span>
+                              {comment.profile?.username ? (
+                                <Link to={`/profile/${comment.profile.username}`} className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
+                                  {comment.profile.display_name || comment.profile.username}
+                                </Link>
+                              ) : (
+                                <span className="text-sm font-semibold text-foreground">User</span>
+                              )}
                               <span className="text-xs text-muted-foreground">{timeAgo(comment.created_at)}</span>
                             </div>
                             <p className="text-sm text-foreground/80 leading-relaxed mb-2">{comment.content}</p>

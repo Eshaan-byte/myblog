@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import ScrollReveal from "@/components/ScrollReveal";
 import { SkeletonSection } from "@/components/skeletons";
-import { User, Calendar, Shield, FileText, Clock, Pencil, Camera, X, Check } from "lucide-react";
+import { User, Calendar, Shield, FileText, Clock, Pencil, Camera, X, Check, UserPlus, UserCheck, Users } from "lucide-react";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -42,6 +42,7 @@ const roleBadge: Record<AppRole, { label: string; className: string }> = {
 const ProfilePage = () => {
   const { username } = useParams<{ username: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [articles, setArticles] = useState<ArticlePreview[]>([]);
@@ -53,6 +54,9 @@ const ProfilePage = () => {
   const [editBio, setEditBio] = useState("");
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [followerCount, setFollowerCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [isFollowing, setIsFollowing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isOwnProfile = user && profile && user.id === profile.user_id;
@@ -91,12 +95,29 @@ const ProfilePage = () => {
 
     setRoles(roleData?.map((r) => r.role) ?? []);
     setArticles(articleData ?? []);
+
+    // Fetch follow data
+    try {
+      const [followersRes, followingRes, followCheck] = await Promise.all([
+        supabase.from("followers").select("*", { count: "exact", head: true }).eq("author_id", profileData.user_id),
+        supabase.from("followers").select("*", { count: "exact", head: true }).eq("follower_id", profileData.user_id),
+        user && user.id !== profileData.user_id
+          ? supabase.from("followers").select("id").eq("follower_id", user.id).eq("author_id", profileData.user_id).maybeSingle()
+          : Promise.resolve({ data: null, error: null }),
+      ]);
+      if (!followersRes.error) setFollowerCount(followersRes.count ?? 0);
+      if (!followingRes.error) setFollowingCount(followingRes.count ?? 0);
+      if (!followCheck.error) setIsFollowing(!!followCheck.data);
+    } catch {
+      // followers table may not exist yet
+    }
+
     setLoading(false);
   };
 
   useEffect(() => {
     fetchProfile();
-  }, [username]);
+  }, [username, user]);
 
   const startEditing = () => {
     setEditDisplayName(profile?.display_name || "");
@@ -166,6 +187,32 @@ const ProfilePage = () => {
       fetchProfile();
     }
     setUploadingAvatar(false);
+  };
+
+  const handleToggleFollow = async () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (!profile) return;
+
+    try {
+      if (isFollowing) {
+        const { error } = await supabase.from("followers").delete().eq("author_id", profile.user_id).eq("follower_id", user.id);
+        if (error) { toast.error(error.message); return; }
+        setIsFollowing(false);
+        setFollowerCount((c) => c - 1);
+        toast.success(`Unfollowed ${profile.display_name || profile.username}`);
+      } else {
+        const { error } = await supabase.from("followers").upsert({ author_id: profile.user_id, follower_id: user.id }, { onConflict: "follower_id,author_id" });
+        if (error) { toast.error(error.message); return; }
+        setIsFollowing(true);
+        setFollowerCount((c) => c + 1);
+        toast.success(`Following ${profile.display_name || profile.username}`);
+      }
+    } catch {
+      toast.error("Follow feature not available yet");
+    }
   };
 
   if (loading) {
@@ -306,12 +353,25 @@ const ProfilePage = () => {
                         <Pencil className="w-4 h-4" />
                       </button>
                     )}
+                    {!isOwnProfile && (
+                      <button
+                        onClick={handleToggleFollow}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
+                          isFollowing
+                            ? "bg-primary/20 text-primary"
+                            : "bg-foreground text-background hover:bg-foreground/90"
+                        }`}
+                      >
+                        {isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                        {isFollowing ? "Following" : "Follow"}
+                      </button>
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">@{profile.username}</p>
                   {profile.bio && (
                     <p className="text-sm text-foreground/80 mb-3">{profile.bio}</p>
                   )}
-                  <div className="flex items-center justify-center sm:justify-start gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center justify-center sm:justify-start gap-4 text-xs text-muted-foreground flex-wrap">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5" />
                       Joined {new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
@@ -320,6 +380,11 @@ const ProfilePage = () => {
                       <FileText className="w-3.5 h-3.5" />
                       {articles.length} article{articles.length !== 1 ? "s" : ""}
                     </span>
+                    <span className="flex items-center gap-1">
+                      <Users className="w-3.5 h-3.5" />
+                      {followerCount} follower{followerCount !== 1 ? "s" : ""}
+                    </span>
+                    <span>{followingCount} following</span>
                   </div>
                 </>
               )}

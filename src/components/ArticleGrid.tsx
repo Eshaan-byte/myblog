@@ -9,6 +9,15 @@ import { useCms } from "@/contexts/CmsContext";
 
 const fallbackImages = [thumb1, thumb2, thumb3];
 
+const timeAgo = (dateStr: string) => {
+  if (!dateStr) return "Recently";
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const hours = Math.floor(diff / 3600000);
+  if (hours < 1) return "Just now";
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+};
+
 const ArticleGrid = () => {
   const { state } = useCms();
   const published = state.posts.filter(p => p.status === "published");
@@ -36,7 +45,7 @@ const ArticleGrid = () => {
             {i === 0 && <div className="lux-divider w-10 mb-3" />}
             <div className="flex items-center gap-2 text-xs mb-2">
               <span className="text-category font-medium">{article.category}</span>
-              <span className="text-muted-foreground">· {article.publishDate || "Recently"}</span>
+              <span className="text-muted-foreground">· {timeAgo(article.publishDate)}</span>
             </div>
             <p className="text-sm font-semibold text-foreground leading-snug group-hover:text-primary transition-colors duration-300 line-clamp-2">
               {article.title}

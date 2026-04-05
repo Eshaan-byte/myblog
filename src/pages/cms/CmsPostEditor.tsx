@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Bold, Italic, Underline, Heading1, Heading2, Heading3, Quote, Code, List, ListOrdered, Link2, ImageIcon, Undo2, Redo2, ChevronDown, X, Calendar } from "lucide-react";
+import { ArrowLeft, Bold, Italic, Underline, Heading1, Heading2, Heading3, Quote, Code, List, ListOrdered, Link2, ImageIcon, Undo2, Redo2, ChevronDown, X, Calendar, Upload } from "lucide-react";
 import { useCms, CmsPost } from "@/contexts/CmsContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,6 +38,10 @@ export default function CmsPostEditor() {
   const [ogImage, setOgImage] = useState(existing?.ogImage || "");
   const [showPublishConfirm, setShowPublishConfirm] = useState(false);
   const [seoOpen, setSeoOpen] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const inlineImgRef = useRef<HTMLInputElement>(null);
 
   // Sync form when the post loads from Supabase (direct navigation to edit URL)
   useEffect(() => {
@@ -103,8 +107,7 @@ export default function CmsPostEditor() {
       const url = prompt("Enter URL:");
       if (url) execCommand(cmd, url);
     } else if (cmd === "insertImage") {
-      const url = prompt("Enter image URL:");
-      if (url) execCommand(cmd, url);
+      inlineImgRef.current?.click();
     } else if (cmd === "formatBlock") {
       execCommand(cmd, val || "p");
     } else {
@@ -112,10 +115,72 @@ export default function CmsPostEditor() {
     }
   };
 
+  const handleInlineImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Only JPEG, PNG, WebP, and GIF images are allowed");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10 MB");
+      return;
+    }
+
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${user.id}/article-images/${Date.now()}-${safeName}`;
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: false });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      execCommand("insertImage", urlData.publicUrl);
+      toast.success("Image inserted!");
+    }
+    if (inlineImgRef.current) inlineImgRef.current.value = "";
+  };
+
+  const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Only JPEG, PNG, WebP, and GIF images are allowed");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Image must be under 10 MB");
+      return;
+    }
+
+    setUploadingCover(true);
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${user.id}/article-images/${Date.now()}-${safeName}`;
+
+    const { error } = await supabase.storage.from("avatars").upload(path, file, { upsert: false });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      setCoverImage(urlData.publicUrl);
+      toast.success("Cover image uploaded!");
+    }
+
+    setUploadingCover(false);
+    if (coverInputRef.current) coverInputRef.current.value = "";
+  };
+
   const save = async (asStatus?: CmsPost["status"]) => {
+    if (saving) return;
     if (!title.trim()) { toast.error("Title is required"); return; }
     if (!user) { toast.error("User not found"); return; }
 
+    setSaving(true);
     const finalStatus = asStatus || status;
     const postData = {
       title,
@@ -140,6 +205,7 @@ export default function CmsPostEditor() {
 
       if (error) {
         toast.error(error.message);
+        setSaving(false);
         return;
       }
       addActivity("Updated", title);
@@ -149,6 +215,7 @@ export default function CmsPostEditor() {
 
       if (error) {
         toast.error(error.message);
+        setSaving(false);
         return;
       }
       addActivity("Created", title);
@@ -156,11 +223,19 @@ export default function CmsPostEditor() {
     }
     
     await refreshPosts();
+    setSaving(false);
     navigate("/cms/posts");
   };
 
   return (
     <div className="space-y-4">
+      <input
+        ref={inlineImgRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        onChange={handleInlineImageUpload}
+        className="hidden"
+      />
       <button onClick={() => navigate("/cms/posts")} className="flex items-center gap-2 text-sm transition-colors hover:opacity-80" style={{ color: "#f59e0b" }}>
         <ArrowLeft className="w-4 h-4" /> Back to Posts
       </button>
@@ -259,11 +334,11 @@ export default function CmsPostEditor() {
             )}
 
             <div className="flex gap-2 pt-1">
-              <button onClick={() => save("draft")} className="flex-1 py-2 rounded-lg text-sm font-medium transition-transform active:scale-[0.97]" style={{ border: "1px solid #2a2d3e" }}>
-                Save Draft
+              <button onClick={() => save("draft")} disabled={saving} className="flex-1 py-2 rounded-lg text-sm font-medium transition-transform active:scale-[0.97] disabled:opacity-50" style={{ border: "1px solid #2a2d3e" }}>
+                {saving ? "Saving..." : "Save Draft"}
               </button>
-              <button onClick={() => setShowPublishConfirm(true)} className="flex-1 py-2 rounded-lg text-sm font-semibold transition-transform active:scale-[0.97]" style={{ background: "#f59e0b", color: "#0f1117" }}>
-                Publish
+              <button onClick={() => setShowPublishConfirm(true)} disabled={saving} className="flex-1 py-2 rounded-lg text-sm font-semibold transition-transform active:scale-[0.97] disabled:opacity-50" style={{ background: "#f59e0b", color: "#0f1117" }}>
+                {saving ? "Saving..." : "Publish"}
               </button>
             </div>
           </div>
@@ -300,6 +375,13 @@ export default function CmsPostEditor() {
           {/* Featured Image */}
           <div className="rounded-xl p-4" style={cardStyle}>
             <label className="text-xs font-medium mb-2 block" style={{ color: "#9ca3af" }}>Featured Image</label>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              onChange={handleCoverUpload}
+              className="hidden"
+            />
             {coverImage ? (
               <div className="relative rounded-lg overflow-hidden mb-2">
                 <img src={coverImage} alt="Cover" className="w-full h-32 object-cover" />
@@ -307,12 +389,35 @@ export default function CmsPostEditor() {
               </div>
             ) : (
               <div
-                onClick={() => { const url = prompt("Enter image URL:"); if (url) setCoverImage(url); }}
+                onClick={() => !uploadingCover && coverInputRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = "#f59e0b"; }}
+                onDragLeave={e => { e.preventDefault(); e.currentTarget.style.borderColor = "#2a2d3e"; }}
+                onDrop={e => {
+                  e.preventDefault();
+                  e.currentTarget.style.borderColor = "#2a2d3e";
+                  const file = e.dataTransfer.files[0];
+                  if (file && coverInputRef.current) {
+                    const dt = new DataTransfer();
+                    dt.items.add(file);
+                    coverInputRef.current.files = dt.files;
+                    coverInputRef.current.dispatchEvent(new Event("change", { bubbles: true }));
+                  }
+                }}
                 className="flex flex-col items-center justify-center h-28 rounded-lg border-2 border-dashed cursor-pointer transition-colors hover:border-amber-500/40"
-                style={{ borderColor: "#2a2d3e" }}
+                style={{ borderColor: "#2a2d3e", pointerEvents: uploadingCover ? "none" : "auto" }}
               >
-                <ImageIcon className="w-6 h-6 mb-1" style={{ color: "#6b7280" }} />
-                <span className="text-xs" style={{ color: "#6b7280" }}>Click to upload</span>
+                {uploadingCover ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-1" />
+                    <span className="text-xs" style={{ color: "#9ca3af" }}>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-6 h-6 mb-1" style={{ color: "#6b7280" }} />
+                    <span className="text-xs" style={{ color: "#6b7280" }}>Click or drag image to upload</span>
+                    <span className="text-[10px] mt-0.5" style={{ color: "#4b5563" }}>JPEG, PNG, WebP, GIF — max 10 MB</span>
+                  </>
+                )}
               </div>
             )}
             <input value={coverImage} onChange={e => setCoverImage(e.target.value)} placeholder="Or paste image URL" className={`${inputStyle} mt-2`} style={inputBg} />

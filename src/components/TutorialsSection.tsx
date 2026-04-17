@@ -1,15 +1,13 @@
-import { Link } from "react-router-dom";
+"use client";
+
+import Link from "next/link";
 import ScrollReveal from "@/components/ScrollReveal";
 import SectionHeader from "@/components/SectionHeader";
 import PostCard from "@/components/PostCard";
 import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
-import thumb1 from "@/assets/article-thumb-1.jpg";
-import thumb2 from "@/assets/article-thumb-2.jpg";
-import thumb3 from "@/assets/article-thumb-3.jpg";
-import thumb4 from "@/assets/article-thumb-4.jpg";
 
-const fallbackImages = [thumb1, thumb2, thumb3, thumb4];
+const fallbackImages = ["/images/article-thumb-1.jpg", "/images/article-thumb-2.jpg", "/images/article-thumb-3.jpg", "/images/article-thumb-4.jpg"];
 const tutorialCategories = ["programming", "tutorials", "career guides", "career-guides", "learn"];
 
 const timeAgo = (dateStr: string) => {
@@ -48,7 +46,7 @@ const TutorialsSection = () => {
       <SectionHeader label="Popular Tutorials" viewMoreLink="/category/tutorials" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {tutorials.map((post, i) => (
-          <Link key={post.id} to={`/article/${post.slug}`} className="block">
+          <Link key={post.id} href={`/article/${post.slug}`} className="block">
             <PostCard
               title={post.title}
               image={post.coverImage || fallbackImages[i % fallbackImages.length]}

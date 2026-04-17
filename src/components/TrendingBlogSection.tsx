@@ -1,14 +1,14 @@
+"use client";
+
 import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import ScrollReveal from "@/components/ScrollReveal";
 import SectionHeader from "@/components/SectionHeader";
 import PostCard from "@/components/PostCard";
 import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
-import thumb1 from "@/assets/article-thumb-1.jpg";
-import thumb2 from "@/assets/article-thumb-2.jpg";
 
-const fallbackImages = [thumb1, thumb2];
+const fallbackImages = ["/images/article-thumb-1.jpg", "/images/article-thumb-2.jpg"];
 
 const TrendingBlogSection = () => {
   const { state } = useCms();
@@ -52,7 +52,7 @@ const TrendingBlogSection = () => {
         {/* Main: featured + grid */}
         <div>
           {topPost && (
-            <Link to={`/article/${topPost.slug}`} className="block">
+            <Link href={`/article/${topPost.slug}`} className="block">
               <PostCard
                 title={topPost.title}
                 image={topPost.coverImage || fallbackImages[0]}
@@ -67,7 +67,7 @@ const TrendingBlogSection = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
             {gridPosts.map((post, i) => (
-              <Link key={post.id} to={`/article/${post.slug}`} className="block">
+              <Link key={post.id} href={`/article/${post.slug}`} className="block">
                 <PostCard
                   title={post.title}
                   image={post.coverImage || fallbackImages[i % fallbackImages.length]}
@@ -88,7 +88,7 @@ const TrendingBlogSection = () => {
                 <h3 className="font-display font-semibold text-base text-foreground mb-4">Most Read</h3>
                 <div className="space-y-1">
                   {sideArticles.map((a, i) => (
-                    <Link key={a.id} to={`/article/${a.slug}`} className="block">
+                    <Link key={a.id} href={`/article/${a.slug}`} className="block">
                       <PostCard
                         title={a.title}
                         image={a.coverImage || fallbackImages[i % fallbackImages.length]}

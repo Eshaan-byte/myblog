@@ -1,17 +1,14 @@
+"use client";
+
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import ScrollReveal from "@/components/ScrollReveal";
 import LazyImage from "@/components/LazyImage";
 import { SkeletonSection } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
-import thumb4 from "@/assets/article-thumb-4.jpg";
-import card1 from "@/assets/article-card-1.jpg";
-import card2 from "@/assets/article-card-2.jpg";
-import card3 from "@/assets/article-card-3.jpg";
-import thumb1 from "@/assets/article-thumb-1.jpg";
 
-const fallbackImages = [thumb4, card2, card1, card3, thumb1];
+const fallbackImages = ["/images/article-thumb-4.jpg", "/images/article-card-2.jpg", "/images/article-card-1.jpg", "/images/article-card-3.jpg", "/images/article-thumb-1.jpg"];
 const PAGE_SIZE = 5;
 
 const timeAgo = (dateStr: string) => {
@@ -53,7 +50,7 @@ const BestOfMonth = () => {
               Best of the Month
             </span>
           </div>
-          <Link to="/category/tech-blog" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300">
+          <Link href="/category/tech-blog" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300">
             View more <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
@@ -62,7 +59,7 @@ const BestOfMonth = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
         {articles.map((article, i) => (
           <ScrollReveal key={article.id} delay={0.1 + i * 0.08} direction="up">
-            <Link to={`/article/${article.slug}`} className="block cursor-pointer group card-hover-glass">
+            <Link href={`/article/${article.slug}`} className="block cursor-pointer group card-hover-glass">
               <LazyImage
                 src={article.coverImage || fallbackImages[i % fallbackImages.length]}
                 alt={article.title}

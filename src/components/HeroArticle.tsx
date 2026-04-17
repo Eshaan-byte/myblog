@@ -1,6 +1,7 @@
+"use client";
+
 import { ArrowRight, Clock } from "lucide-react";
-import { Link } from "react-router-dom";
-import heroOrb from "@/assets/hero-orb.png";
+import Link from "next/link";
 import ScrollReveal from "@/components/ScrollReveal";
 import LazyImage from "@/components/LazyImage";
 import { SkeletonHero } from "@/components/skeletons";
@@ -21,7 +22,7 @@ const HeroArticle = () => {
       <ScrollReveal direction="up" delay={0.1} duration={0.9}>
         <div className="relative glass-panel rounded-2xl p-8 overflow-hidden min-h-[400px] flex flex-col justify-center items-center">
           <p className="text-muted-foreground text-sm">No published articles yet. Create one in the CMS.</p>
-          <img src={heroOrb} alt="" className="absolute right-0 top-1/2 -translate-y-1/2 w-[300px] md:w-[400px] opacity-40 pointer-events-none" />
+          <img src={"/images/hero-orb.png"} alt="" className="absolute right-0 top-1/2 -translate-y-1/2 w-[300px] md:w-[400px] opacity-40 pointer-events-none" />
         </div>
       </ScrollReveal>
     );
@@ -66,14 +67,14 @@ const HeroArticle = () => {
           </div>
         </div>
         <Link
-          to={`/article/${hero.slug}`}
+          href={`/article/${hero.slug}`}
           className="lux-button relative z-10 flex items-center gap-2 border border-border/60 rounded-full px-5 py-2.5 text-sm font-medium text-foreground w-fit"
         >
           Read article
           <ArrowRight className="w-4 h-4" />
         </Link>
         <img
-          src={heroOrb}
+          src={"/images/hero-orb.png"}
           alt=""
           className="absolute right-0 top-1/2 -translate-y-1/2 w-[300px] md:w-[400px] opacity-80 pointer-events-none"
         />

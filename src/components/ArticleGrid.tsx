@@ -1,13 +1,12 @@
-import { Link } from "react-router-dom";
-import thumb1 from "@/assets/article-thumb-1.jpg";
-import thumb2 from "@/assets/article-thumb-2.jpg";
-import thumb3 from "@/assets/article-thumb-3.jpg";
+"use client";
+
+import Link from "next/link";
 import ScrollReveal from "@/components/ScrollReveal";
 import LazyImage from "@/components/LazyImage";
 import { SkeletonArticleGrid } from "@/components/skeletons";
 import { useCms } from "@/contexts/CmsContext";
 
-const fallbackImages = [thumb1, thumb2, thumb3];
+const fallbackImages = ["/images/article-thumb-1.jpg", "/images/article-thumb-2.jpg", "/images/article-thumb-3.jpg"];
 
 const timeAgo = (dateStr: string) => {
   if (!dateStr) return "Recently";
@@ -36,7 +35,7 @@ const ArticleGrid = () => {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mt-6">
       {articles.map((article, i) => (
         <ScrollReveal key={article.id} delay={i * 0.1} direction="up">
-          <Link to={`/article/${article.slug}`} className="cursor-pointer group card-hover-glass glass-panel rounded-xl p-3 block">
+          <Link href={`/article/${article.slug}`} className="cursor-pointer group card-hover-glass glass-panel rounded-xl p-3 block">
             {article.coverImage ? (
               <LazyImage src={article.coverImage} alt={article.title} containerClassName="w-full h-28 rounded-lg overflow-hidden mb-3" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
             ) : (

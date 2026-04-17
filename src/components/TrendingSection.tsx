@@ -1,21 +1,17 @@
+"use client";
+
 import { ArrowRight, ArrowLeft } from "lucide-react";
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import ScrollReveal from "@/components/ScrollReveal";
-import card1 from "@/assets/article-card-1.jpg";
-import card2 from "@/assets/article-card-2.jpg";
-import card3 from "@/assets/article-card-3.jpg";
-import card4 from "@/assets/article-card-4.jpg";
-import thumb1 from "@/assets/article-thumb-1.jpg";
-import thumb4 from "@/assets/article-thumb-4.jpg";
 
 const cardArticles = [
-  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: card1 },
-  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: thumb4 },
-  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: card3 },
-  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: card2 },
-  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: thumb1 },
-  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: card1 },
+  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: "/images/article-card-1.jpg" },
+  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: "/images/article-thumb-4.jpg" },
+  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: "/images/article-card-3.jpg" },
+  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: "/images/article-card-2.jpg" },
+  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: "/images/article-thumb-1.jpg" },
+  { title: "Over 65% of Crypto-Related Tweets and 84% of Conversations on Reddit Were…", image: "/images/article-card-1.jpg" },
 ];
 
 const TrendingSection = () => {
@@ -37,7 +33,7 @@ const TrendingSection = () => {
                   Trending Now
                 </span>
               </div>
-              <Link to="/category" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300">
+              <Link href="/category" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300">
                 View more <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
@@ -54,7 +50,7 @@ const TrendingSection = () => {
                 <span className="text-sm text-muted-foreground">#Ethereum</span>
                 <span className="text-sm text-muted-foreground">#Analytics</span>
               </div>
-              <Link to="/category" className="lux-button flex items-center gap-2 border border-border/60 rounded-full px-5 py-2.5 text-sm font-medium text-foreground w-fit">
+              <Link href="/category" className="lux-button flex items-center gap-2 border border-border/60 rounded-full px-5 py-2.5 text-sm font-medium text-foreground w-fit">
                 Read article
                 <ArrowRight className="w-4 h-4" />
               </Link>
@@ -62,7 +58,7 @@ const TrendingSection = () => {
 
             <ScrollReveal direction="scale" delay={0.2}>
               <div className="lux-image rounded-xl mt-2 group cursor-pointer card-hover-glass">
-                <img src={card4} alt="Solana" className="w-full h-[200px] object-cover rounded-xl" />
+                <img src="/images/article-card-4.jpg" alt="Solana" className="w-full h-[200px] object-cover rounded-xl" />
               </div>
             </ScrollReveal>
           </div>

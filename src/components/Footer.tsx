@@ -1,5 +1,7 @@
+"use client";
+
 import { Globe } from "lucide-react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { useCms } from "@/contexts/CmsContext";
 
 const footerNav = [
@@ -92,7 +94,7 @@ const Footer = () => {
                 {section.links.map((link) => (
                   <li key={link.path}>
                     <Link
-                      to={link.path}
+                      href={link.path}
                       className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
                     >
                       {link.label}

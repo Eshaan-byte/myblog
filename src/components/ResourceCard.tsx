@@ -1,3 +1,5 @@
+"use client";
+
 import { ExternalLink, Star } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 

@@ -1,3 +1,5 @@
+"use client";
+
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,7 +51,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    setRoles(data?.map((r) => r.role) ?? []);
+    setRoles(data?.map((r: any) => r.role) ?? []);
   };
 
   useEffect(() => {

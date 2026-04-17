@@ -1,3 +1,5 @@
+"use client";
+
 import React, { Suspense, ComponentType } from "react";
 import { SkeletonSection } from "@/components/skeletons";
 

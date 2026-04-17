@@ -1,5 +1,7 @@
+"use client";
+
 import { ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import ScrollReveal from "@/components/ScrollReveal";
 
 interface SectionHeaderProps {
@@ -18,7 +20,7 @@ const SectionHeader = ({ label, viewMoreLink, delay = 0 }: SectionHeaderProps) =
       </div>
       {viewMoreLink && (
         <Link
-          to={viewMoreLink}
+          href={viewMoreLink}
           className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors duration-300"
         >
           View more <ArrowRight className="w-4 h-4" />
